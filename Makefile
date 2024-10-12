@@ -2,7 +2,7 @@ SUBDIRS = \
 	modules/qenv
 
 SUBDIRS += \
-	samples/01_qenv-test
+	samples/01_qenv-ctl
 
 .PHONY: all
 all:
