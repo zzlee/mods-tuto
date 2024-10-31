@@ -16,6 +16,38 @@ static struct class *g_class = NULL;
 static int g_major = 0;
 static int g_cdevno_base = 0;
 
+static ssize_t __sysfs_export_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t __sysfs_unexport_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t __sysfs_export_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	struct qenv_device *self = (struct qenv_device *)dev_get_drvdata(sysfs_dev);
+
+	pr_err("EPERM");
+
+	return 0;
+}
+
+static ssize_t __sysfs_unexport_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	struct qenv_device *self = (struct qenv_device *)dev_get_drvdata(sysfs_dev);
+
+	pr_err("EPERM");
+
+	return 0;
+}
+
+static DEVICE_ATTR(export, 0664, NULL, __sysfs_export_store);
+static DEVICE_ATTR(unexport, 0664, NULL, __sysfs_unexport_store);
+
+static struct attribute *attrs[] = {
+	&dev_attr_export.attr,
+	&dev_attr_unexport.attr,
+	NULL,
+};
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
 int qenv_cdev_register(void) {
 	int err;
 	dev_t dev;
@@ -33,6 +65,15 @@ int qenv_cdev_register(void) {
 		goto err0;
 	}
 
+pr_info("sysfs");
+	err = sysfs_create_group(g_class->dev_kobj, &attr_group);
+	if (err) {
+		pr_err("sysfs_create_group() failed, err=%d\n", err);
+
+		goto err0_1;
+	}
+
+pr_info("chrdev_region");
 	err = alloc_chrdev_region(&dev, QENV_MINOR_BASE, QENV_MINOR_COUNT, QENV_NODE_NAME);
 	if (err) {
 		pr_err("alloc_chrdev_region() failed, err=%d\n", err);
@@ -47,6 +88,8 @@ int qenv_cdev_register(void) {
 	return err;
 
 err1:
+	sysfs_remove_group(g_class->dev_kobj, &attr_group);
+err0_1:
 	class_destroy(g_class);
 err0:
 	return err;
@@ -55,6 +98,7 @@ err0:
 void qenv_cdev_unregister(void) {
 	pr_info("\n");
 
+	sysfs_remove_group(g_class->dev_kobj, &attr_group);
 	unregister_chrdev_region(MKDEV(g_major, QENV_MINOR_BASE), QENV_MINOR_COUNT);
 	class_destroy(g_class);
 }

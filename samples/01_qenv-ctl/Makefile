@@ -9,8 +9,6 @@ SRCS := \
 OBJS := $(SRCS:.cpp=.cpp.o)
 OBJS := $(OBJS:.cu=.cu.o)
 
-${info CFLAGS=${CFLAGS}}
-
 all: $(APP)
 
 clean:

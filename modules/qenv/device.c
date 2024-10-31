@@ -29,6 +29,9 @@ static long __file_ioctl(struct file * filp, unsigned int cmd, unsigned long arg
 static long __file_ioctl_compat(struct file *filep, unsigned int cmd, unsigned long arg);
 #endif
 
+static ssize_t __sysfs_export_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t __sysfs_unexport_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count);
+
 #ifdef CONFIG_OF
 extern struct of_device_id qenv_of_match[];
 #endif // CONFIG_OF
@@ -52,6 +55,35 @@ static struct file_operations __fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = __file_ioctl_compat,
 #endif
+};
+
+static ssize_t __sysfs_export_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	struct qenv_device *self = (struct qenv_device *)dev_get_drvdata(sysfs_dev);
+
+	pr_err("EPERM");
+
+	return 0;
+}
+
+static ssize_t __sysfs_unexport_store(struct device *sysfs_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	struct qenv_device *self = (struct qenv_device *)dev_get_drvdata(sysfs_dev);
+
+	pr_err("EPERM");
+
+	return 0;
+}
+
+static DEVICE_ATTR(export, 0664, NULL, __sysfs_export_store);
+static DEVICE_ATTR(unexport, 0664, NULL, __sysfs_unexport_store);
+
+static struct attribute *attrs[] = {
+	&dev_attr_export.attr,
+	&dev_attr_unexport.attr,
+	NULL,
+};
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
 };
 
 static int __probe(struct platform_device *pdev) {
@@ -160,8 +192,9 @@ static void __device_put(struct qenv_device* self) {
 
 static int __device_start(struct qenv_device* self) {
 	int err;
+	struct device* dev = &self->pdev->dev;
 
-	// pr_info("\n");
+	pr_info("\n");
 
 	self->cdev.private_data = self;
 	self->cdev.fops = &__fops;
@@ -172,15 +205,27 @@ static int __device_start(struct qenv_device* self) {
 		goto err0;
 	}
 
+	err = sysfs_create_group(&dev->kobj, &attr_group);
+	if (err) {
+		dev_err(dev, "sysfs group creation (%d) failed \n", err);
+
+		goto err1;
+	}
+
 	return 0;
 
+err1:
+	qenv_cdev_stop(&self->cdev);
 err0:
 	return err;
 }
 
 static void __device_stop(struct qenv_device* self) {
-	// pr_info("\n");
+	struct device* dev = &self->pdev->dev;
 
+	pr_info("\n");
+
+	sysfs_remove_group(&dev->kobj, &attr_group);
 	qenv_cdev_stop(&self->cdev);
 }
 
